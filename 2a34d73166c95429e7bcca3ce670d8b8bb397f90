@@ -1,0 +1,47 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "2a34d73166c95429e7bcca3ce670d8b8bb397f90",
+  "prompts": {
+    "54aef2b833f8b4cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80beea8-9017-43cb-9490-ecdc90b610cc",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "ekaansh <ekaansh.arora@zoom.us>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    },
+    "adeb691e101f2088": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db2245f2-d44f-4b1a-ba76-8941709fcd1b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "ekaansh <ekaansh.arora@zoom.us>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 128,
+      "overriden_lines": 0
+    },
+    "ff3ab361adf9ea5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d601af6-34b1-40df-85d6-f19bea4e83b4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
