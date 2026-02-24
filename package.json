@@ -1,0 +1,33 @@
+{
+  "type": "module",
+  "name": "scribe-quickstart",
+  "version": "1.0.0",
+  "description": "Zoom AI Scribe API Quickstart",
+  "main": "src/index.ts",
+  "scripts": {
+    "format": "prettier --write src/*.ts",
+    "start": "node src/index.ts"
+  },
+  "author": "Zoom Video Communications, Inc.",
+  "contributors": [
+    {
+      "name": "EkaanshArora"
+    }
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsrsasign": "^11.1.0",
+    "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^1.4.12",
+    "@types/jsrsasign": "^10.5.15",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  }
+}

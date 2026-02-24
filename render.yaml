@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: Zoom Scribe API Quickstart
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    repo: https://github.com/zoom/scribe-quickstart
+    rootDir: .
+    plan: free
+    envVars:
+      - key: ZOOM_API_KEY
+        sync: false
+      - key: ZOOM_API_SECRET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_SESSION_TOKEN
+        sync: false
+      - key: S3_INPUT_URI
+        sync: false

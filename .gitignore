@@ -1,0 +1,5 @@
+.vscode
+node_modules
+.env
+OpenAPI_export.json
+.DS_Store
