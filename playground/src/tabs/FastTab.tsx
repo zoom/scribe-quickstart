@@ -49,7 +49,7 @@ export function FastTab() {
                     <div
                         className={[
                             'relative rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer',
-                            dragging ? 'border-indigo-400 bg-indigo-500/10' : 'border-white/12 hover:border-white/25 bg-white/2',
+                            dragging ? 'border-zoom-blue bg-zoom-blue/5' : 'border-gray-300 hover:border-gray-400 bg-gray-50',
                         ].join(' ')}
                         onDragOver={e => { e.preventDefault(); setDragging(true) }}
                         onDragLeave={() => setDragging(false)}
@@ -77,15 +77,15 @@ export function FastTab() {
                         <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
                             {fileName ? (
                                 <>
-                                    <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">♪</div>
-                                    <span className="text-sm font-medium text-gray-200">{fileName}</span>
+                                    <div className="w-10 h-10 rounded-full bg-zoom-blue/10 flex items-center justify-center text-zoom-blue">♪</div>
+                                    <span className="text-sm font-medium text-gray-700">{fileName}</span>
                                     <span className="text-xs text-gray-500">Click to change file</span>
                                 </>
                             ) : (
                                 <>
-                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-500">↑</div>
-                                    <span className="text-sm text-gray-400">Drop audio file here or <span className="text-indigo-400">browse</span></span>
-                                    <span className="text-xs text-gray-600">wav · mp3 · m4a · flac · ogg · webm · mp4 · mov — max 100 MB</span>
+                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">↑</div>
+                                    <span className="text-sm text-gray-500">Drop audio file here or <span className="text-zoom-blue font-medium">browse</span></span>
+                                    <span className="text-xs text-gray-500">wav · mp3 · m4a · flac · ogg · webm · mp4 · mov — max 100 MB</span>
                                 </>
                             )}
                         </div>
@@ -101,32 +101,33 @@ export function FastTab() {
                     <AsrConfigForm value={config} onChange={setConfig} />
                 </Card>
 
+            </form>
+            <div className="lg:sticky lg:top-20">
+
                 <button
                     type="submit"
                     disabled={busy}
                     className={[
-                        'flex items-center gap-2 self-start px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150',
+                        'flex items-center gap-2 self-start px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150 mb-4',
                         busy
-                            ? 'bg-indigo-600/50 text-indigo-300 cursor-not-allowed'
-                            : 'bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-lg shadow-indigo-900/40',
+                            ? 'bg-zoom-blue/50 text-white cursor-not-allowed'
+                            : 'bg-zoom-blue hover:bg-zoom-blue-hover active:scale-95 text-white shadow-lg shadow-zoom-blue/25',
                     ].join(' ')}
                 >
                     {busy && <Spinner />}
                     {busy ? 'Transcribing…' : '▶ Transcribe'}
                 </button>
-            </form>
-            <div className="lg:sticky lg:top-20">
-                <div className="mb-4 rounded-xl border border-white/8 overflow-hidden">
-                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/6 bg-white/4">
-                        <div className={`w-2 h-2 rounded-full transition-colors ${result === 'loading' ? 'bg-yellow-400 animate-pulse' : displayText ? 'bg-emerald-400' : 'bg-white/10'}`} />
-                        <span className="text-xs font-medium text-gray-400">Transcript</span>
+                <div className="mb-4 rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-200 bg-gray-50">
+                        <div className={`w-2 h-2 rounded-full transition-colors ${result === 'loading' ? 'bg-yellow-500 animate-pulse' : displayText ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                        <span className="text-xs font-medium text-gray-500">Transcript</span>
                     </div>
-                    <p className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap wrap-break-word bg-[#070b12] min-h-32">
+                    <p className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap wrap-break-word bg-zoom-surface min-h-32">
                         {result === 'loading'
-                            ? <span className="text-gray-500 animate-pulse">Waiting for response…</span>
+                            ? <span className="text-gray-400 animate-pulse">Waiting for response…</span>
                             : displayText
-                                ? <span className="text-slate-200">{displayText}</span>
-                                : <span className="text-white/10 select-none">Transcript will appear here…</span>
+                                ? <span className="text-gray-800">{displayText}</span>
+                                : <span className="text-gray-300 select-none">Transcript will appear here…</span>
                         }
                     </p>
                 </div>

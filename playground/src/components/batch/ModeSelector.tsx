@@ -12,8 +12,8 @@ export function ModeSelector({ value, onChange }: { value: InputMode; onChange: 
                     className={[
                         'flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border text-center transition-all duration-150',
                         value === mode
-                            ? 'border-indigo-500/60 bg-indigo-500/10 text-indigo-300'
-                            : 'border-white/8 bg-white/2 text-gray-500 hover:border-white/20 hover:text-gray-300',
+                            ? 'border-zoom-blue/60 bg-zoom-blue/5 text-zoom-blue'
+                            : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 hover:text-gray-700',
                     ].join(' ')}
                 >
                     <span className="text-xs font-semibold">{meta.title}</span>

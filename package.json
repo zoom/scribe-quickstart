@@ -6,7 +6,8 @@
   "main": "src/index.ts",
   "scripts": {
     "format": "prettier --write src/*.ts",
-    "start": "node src/index.ts"
+    "start": "node src/index.ts",
+    "playground": "cd playground && npm run dev"
   },
   "author": "Zoom Video Communications, Inc.",
   "contributors": [

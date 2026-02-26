@@ -18,7 +18,7 @@ export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: 
             onClick={() => onChange(!checked)}
             className={[
                 'relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none',
-                checked ? 'bg-indigo-500' : 'bg-white/10',
+                checked ? 'bg-zoom-blue' : 'bg-gray-300',
             ].join(' ')}
         >
             <span className={[
@@ -32,12 +32,12 @@ export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: 
 export function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
     return (
         <div
-            className="flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg bg-white/3 border border-white/6 cursor-pointer hover:bg-white/5 transition-colors"
+            className="flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
             onClick={() => onChange(!checked)}
         >
             <div>
-                <div className="text-sm text-gray-200">{label}</div>
-                {hint && <div className="text-xs text-gray-600 mt-0.5">{hint}</div>}
+                <div className="text-sm text-gray-700">{label}</div>
+                {hint && <div className="text-xs text-gray-500 mt-0.5">{hint}</div>}
             </div>
             <Toggle checked={checked} onChange={onChange} />
         </div>
@@ -47,8 +47,8 @@ export function ToggleRow({ label, hint, checked, onChange }: { label: string; h
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
     return (
         <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{label}</label>
-            <p className="text-xs text-gray-600 leading-relaxed min-h-4">{hint ?? ''}</p>
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{label}</label>
+            <p className="text-xs text-gray-500 leading-relaxed min-h-4">{hint ?? ''}</p>
             {children}
         </div>
     )
@@ -56,7 +56,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 
 export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={`rounded-xl border border-white/8 bg-white/3 p-5 ${className}`}>
+        <div className={`rounded-xl border border-gray-200 bg-white p-5 ${className}`}>
             {children}
         </div>
     )
@@ -69,14 +69,14 @@ export function CollapsibleCard({
 }) {
     const [open, setOpen] = useState(defaultOpen)
     return (
-        <div className="rounded-xl border border-white/8 bg-white/3 overflow-hidden">
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
             <button
                 type="button"
                 onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center justify-between gap-2 px-5 py-4 hover:bg-white/3 transition-colors"
+                className="w-full flex items-center justify-between gap-2 px-5 py-4 hover:bg-gray-50 transition-colors"
             >
-                <h2 className="text-sm font-semibold text-gray-300 tracking-wide">{title}</h2>
-                <span className={`text-gray-600 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
+                <h2 className="text-sm font-semibold text-gray-700 tracking-wide">{title}</h2>
+                <span className={`text-gray-500 text-xs transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▼</span>
             </button>
             {open && <div className="px-5 pb-5">{children}</div>}
         </div>
@@ -85,6 +85,6 @@ export function CollapsibleCard({
 
 export function SectionHeading({ title }: { title: string }) {
     return (
-        <h2 className="text-sm font-semibold text-gray-300 tracking-wide mb-4">{title}</h2>
+        <h2 className="text-sm font-semibold text-gray-700 tracking-wide mb-4">{title}</h2>
     )
 }

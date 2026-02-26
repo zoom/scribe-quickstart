@@ -241,34 +241,34 @@ export function BatchTab() {
                     className={[
                         'flex items-center gap-2 self-start px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-150',
                         busy
-                            ? 'bg-indigo-600/50 text-indigo-300 cursor-not-allowed'
-                            : 'bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-lg shadow-indigo-900/40',
+                            ? 'bg-zoom-blue/50 text-white cursor-not-allowed'
+                            : 'bg-zoom-blue hover:bg-zoom-blue-hover active:scale-95 text-white shadow-lg shadow-zoom-blue/25',
                     ].join(' ')}
                 >
                     {busy && <Spinner />}
                     {busy ? 'Submitting…' : '▶ Submit Batch Job'}
                 </button>
 
-                <div className="max-h-96 overflow-y-auto rounded-xl border border-white/8 flex flex-col">
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/6 bg-white/4 shrink-0">
+                <div className="max-h-96 overflow-y-auto rounded-xl border border-gray-200 flex flex-col">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-gray-50 shrink-0">
                         <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full transition-colors ${detailLoading ? 'bg-yellow-400 animate-pulse' : detail === null ? 'bg-white/10' : isErrorResponse(detail) ? 'bg-red-400' : 'bg-emerald-400'}`} />
-                            <span className="text-xs font-medium text-gray-400">Response</span>
+                            <div className={`w-2 h-2 rounded-full transition-colors ${detailLoading ? 'bg-yellow-500 animate-pulse' : detail === null ? 'bg-gray-300' : isErrorResponse(detail) ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                            <span className="text-xs font-medium text-gray-500">Response</span>
                         </div>
                         <div className="flex items-center gap-2">
                             {!detailLoading && detail !== null && (
-                                <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-white/5 border border-white/8">
+                                <div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-gray-100 border border-gray-200">
                                     <button
                                         type="button"
                                         onClick={() => setShowVisual(false)}
-                                        className={`px-2 py-0.5 text-[11px] rounded-md transition-all ${!showVisual ? 'bg-white/10 text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}
+                                        className={`px-2 py-0.5 text-[11px] rounded-md transition-all ${!showVisual ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                     >
                                         JSON
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setShowVisual(true)}
-                                        className={`px-2 py-0.5 text-[11px] rounded-md transition-all ${showVisual ? 'bg-white/10 text-gray-200' : 'text-gray-500 hover:text-gray-300'}`}
+                                        className={`px-2 py-0.5 text-[11px] rounded-md transition-all ${showVisual ? 'bg-white text-gray-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                                     >
                                         Visual
                                     </button>
@@ -278,7 +278,7 @@ export function BatchTab() {
                                 <button
                                     type="button"
                                     onClick={() => navigator.clipboard.writeText(JSON.stringify(detail, null, 2))}
-                                    className="text-xs text-gray-600 hover:text-gray-300 transition-colors"
+                                    className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
                                 >
                                     Copy
                                 </button>
@@ -286,15 +286,15 @@ export function BatchTab() {
                         </div>
                     </div>
                     {showVisual && !detailLoading && detail ? (
-                        <div className="p-4 bg-[#070b12] flex-1 overflow-y-auto">
+                        <div className="p-4 bg-zoom-surface flex-1 overflow-y-auto">
                             <BatchResultVisual data={detail} />
                         </div>
                     ) : (
-                        <pre className="p-4 text-xs font-mono overflow-y-scroll flex-1 whitespace-pre-wrap wrap-break-word leading-relaxed bg-[#070b12] min-h-48">
+                        <pre className="p-4 text-xs font-mono overflow-y-scroll flex-1 whitespace-pre-wrap wrap-break-word leading-relaxed bg-zoom-surface min-h-48">
                             {detailLoading
-                                ? <span className="text-gray-500 animate-pulse">Waiting for response…</span>
+                                ? <span className="text-gray-400 animate-pulse">Waiting for response…</span>
                                 : detail === null
-                                    ? <span className="text-white/10 select-none">Response will appear here…</span>
+                                    ? <span className="text-gray-300 select-none">Response will appear here…</span>
                                     : colorizeJson(JSON.stringify(detail, null, 2))
                             }
                         </pre>
@@ -305,14 +305,14 @@ export function BatchTab() {
                 <Card className="max-h-96 overflow-y-auto">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-sm font-semibold text-gray-300 tracking-wide">Jobs</h2>
+                            <h2 className="text-sm font-semibold text-gray-700 tracking-wide">Jobs</h2>
                             {jobs.length > 0 && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-gray-400">{jobs.length}</span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{jobs.length}</span>
                             )}
                         </div>
                         <div className="flex items-center gap-2">
                             <select
-                                className="px-2 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 text-gray-400 focus:outline-none focus:border-indigo-500/50 cursor-pointer"
+                                className="px-2 py-1.5 text-xs rounded-lg bg-white border border-gray-200 text-gray-500 focus:outline-none focus:border-zoom-blue/50 cursor-pointer"
                                 value={form.stateFilter}
                                 onChange={e => set('stateFilter', e.target.value)}
                             >
@@ -323,7 +323,7 @@ export function BatchTab() {
                                 type="button"
                                 onClick={loadJobs}
                                 disabled={loadingJobs}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/5 border border-white/10 text-gray-400 hover:text-gray-200 hover:bg-white/10 transition-colors disabled:opacity-50"
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
                             >
                                 {loadingJobs ? <Spinner /> : '↺'}
                                 {loadingJobs ? 'Loading' : 'Refresh'}
@@ -333,22 +333,22 @@ export function BatchTab() {
 
                     {jobs.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 py-8 text-center">
-                            <p className="text-sm text-gray-600">No jobs yet. Submit one or click Refresh.</p>
+                            <p className="text-sm text-gray-500">No jobs yet. Submit one or click Refresh.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto -mx-1">
                             <table className="w-full text-sm border-collapse">
                                 <thead>
-                                    <tr className="border-b border-white/6">
+                                    <tr className="border-b border-gray-200">
                                         {['Job ID', 'State', ''].map(h => (
-                                            <th key={h} className="text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider py-2 px-3">{h}</th>
+                                            <th key={h} className="text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider py-2 px-3">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/4">
+                                <tbody className="divide-y divide-gray-100">
                                     {jobs.map(job => (
-                                        <tr key={job.job_id} className="hover:bg-white/2 transition-colors group">
-                                            <td className="py-2 px-3 font-mono text-xs text-gray-400 max-w-28 truncate">{job.job_id}</td>
+                                        <tr key={job.job_id} className="hover:bg-gray-50 transition-colors group">
+                                            <td className="py-2 px-3 font-mono text-xs text-gray-500 max-w-28 truncate">{job.job_id}</td>
                                             <td className="py-2 px-3"><StateBadge state={job.state} /></td>
                                             <td className="py-2 px-3">
                                                 <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -363,8 +363,8 @@ export function BatchTab() {
                                                             className={[
                                                                 'px-2 py-0.5 text-[11px] rounded-md border transition-all',
                                                                 action === 'cancel'
-                                                                    ? 'border-red-500/20 text-red-500 hover:bg-red-500/10'
-                                                                    : 'border-white/10 text-gray-400 hover:border-white/25 hover:text-gray-200',
+                                                                    ? 'border-red-200 text-red-500 hover:bg-red-50'
+                                                                    : 'border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700',
                                                             ].join(' ')}
                                                         >
                                                             {label}

@@ -1,4 +1,4 @@
-import { Toggle, Field } from './ui'
+import { Toggle } from './ui'
 import { inputCls } from '../lib/constants'
 
 export function CredentialsBox({
@@ -19,40 +19,43 @@ export function CredentialsBox({
     envNote?: string
 }) {
     return (
-        <div className="rounded-lg border border-white/[0.07] overflow-hidden">
+        <div className="pt-3 border-t border-dashed border-gray-200">
             <div
-                className="flex items-center justify-between px-4 py-3 bg-white/4 cursor-pointer hover:bg-white/6 transition-colors"
+                className="flex items-center justify-between cursor-pointer group"
                 onClick={() => onFromEnvChange(!fromEnv)}
             >
-                <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">{title}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">{fromEnv ? 'from env' : 'custom'}</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">{title}</span>
+                <div className="flex items-center gap-2.5">
+                    <span className={[
+                        'text-[10px] font-medium px-2 py-0.5 rounded-full transition-all duration-200',
+                        fromEnv
+                            ? 'bg-zoom-blue/8 text-zoom-blue'
+                            : 'bg-amber-50 text-amber-600',
+                    ].join(' ')}>
+                        {fromEnv ? 'Environment' : 'Manual'}
+                    </span>
                     <Toggle checked={fromEnv} onChange={onFromEnvChange} />
                 </div>
             </div>
+
             {fromEnv ? (
-                envNote ? (
-                    <div className="px-4 py-3">
-                        <p className="text-xs text-gray-600">{envNote}</p>
-                    </div>
-                ) : (
-                    <div className="px-4 py-3">
-                        <p className="text-xs text-gray-600">Using AWS Access Key, ID &amp; Session Token from server environment.</p>
-                    </div>
-                )
+                <p className="text-xs text-gray-500 leading-relaxed mt-2">
+                    {envNote ?? 'Using AWS Access Key, ID & Session Token from the server environment.'}
+                </p>
             ) : (
-                <div className="px-4 py-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Field label="Access Key ID">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Access Key ID</label>
                         <input className={inputCls + ' font-mono text-xs'} value={keyId} onChange={e => onKeyId(e.target.value)} placeholder="AKIAIOSFODNN7EXAMPLE" />
-                    </Field>
-                    <Field label="Secret Access Key">
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Secret Access Key</label>
                         <input className={inputCls + ' font-mono text-xs'} type="password" value={secret} onChange={e => onSecret(e.target.value)} placeholder="••••••••••••••••" />
-                    </Field>
-                    <Field label="Session Token">
-                        <input className={inputCls + ' font-mono text-xs'} type="password" value={session} onChange={e => onSession(e.target.value)} placeholder="FwoGZX… (optional)" />
-                    </Field>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Session Token</label>
+                        <input className={inputCls + ' font-mono text-xs'} type="password" value={session} onChange={e => onSession(e.target.value)} placeholder="FwoGZX…" />
+                    </div>
                 </div>
             )}
         </div>

@@ -10,9 +10,9 @@ export function AsrConfigForm({ value, onChange }: { value: AsrConfig; onChange:
                 <Field label="Language" hint="BCP-47 code — en-US, es-ES, fr-FR, ja-JP…">
                     <input className={inputCls} value={value.language} onChange={e => set('language', e.target.value)} placeholder="en-US" />
                 </Field>
-                <Field label="Output Format" hint="json (default) — srt/vtt reserved for future">
+                {/* <Field label="Output Format" hint="json (default) — srt/vtt reserved for future">
                     <input className={inputCls} value={value.output_format} onChange={e => set('output_format', e.target.value)} placeholder="json" />
-                </Field>
+                </Field> */}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                 {/* <ToggleRow label="Timestamps" hint="Include segment-level start/end times" checked={value.timestamps} onChange={v => set('timestamps', v)} /> */}

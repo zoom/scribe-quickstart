@@ -1,5 +1,11 @@
 .vscode
 node_modules
 .env
+.env.local
+.env.*.local
 OpenAPI_export.json
 .DS_Store
+*.log
+*.swp
+*.swo
+bun.lock
