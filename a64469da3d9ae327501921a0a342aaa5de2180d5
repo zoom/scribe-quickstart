@@ -1,0 +1,60 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "a64469da3d9ae327501921a0a342aaa5de2180d5",
+  "prompts": {
+    "54aef2b833f8b4cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80beea8-9017-43cb-9490-ecdc90b610cc",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "ekaansh <ekaansh.arora@zoom.us>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "adeb691e101f2088": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db2245f2-d44f-4b1a-ba76-8941709fcd1b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "ekaansh <ekaansh.arora@zoom.us>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    },
+    "cb3a75916dfdf5ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0323f2b1-620b-4092-b338-748f5cfe1b48",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "ff3ab361adf9ea5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d601af6-34b1-40df-85d6-f19bea4e83b4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
