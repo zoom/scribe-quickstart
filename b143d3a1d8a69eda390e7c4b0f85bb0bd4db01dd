@@ -1,0 +1,108 @@
+.dockerignore
+  34da86d0bc4b5da9 2-13
+playground/src/components/JsonResult.tsx
+  761e32a86779e693 9-10,12-13,19,25,27,29
+playground/src/index.css
+  adeb691e101f2088 15
+  761e32a86779e693 4-11
+playground/src/components/batch/KV.tsx
+  761e32a86779e693 4-5
+playground/src/components/batch/BatchResultVisual.tsx
+  761e32a86779e693 32-33,36,41,43,47,54,56,84,94,104,109,117
+playground/src/tabs/FastTab.tsx
+  761e32a86779e693 80,86,111,120,122,127
+playground/src/components/CredentialsBox.tsx
+  761e32a86779e693 22,27,30,32,42,48,52,56
+playground/src/components/batch/ModeSelector.tsx
+  761e32a86779e693 15
+playground/src/components/batch/StateBadge.tsx
+  761e32a86779e693 4
+playground/src/App.tsx
+  ff3ab361adf9ea5e 15
+  adeb691e101f2088 17,20,32
+  761e32a86779e693 11-12
+playground/src/components/batch/types.ts
+  761e32a86779e693 132,137-138
+playground/src/tabs/BatchTab.tsx
+  761e32a86779e693 244,252,255,350,366
+playground/src/components/ui.tsx
+  761e32a86779e693 76,78
+playground/src/lib/constants.ts
+  761e32a86779e693 4-7
+Dockerfile
+  34da86d0bc4b5da9 1,7,13
+.gitignore
+  34da86d0bc4b5da9 4-5,8-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "b143d3a1d8a69eda390e7c4b0f85bb0bd4db01dd",
+  "prompts": {
+    "34da86d0bc4b5da9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5660490a-18cb-4cb3-af21-9289edb44433",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 23,
+      "total_deletions": 17,
+      "accepted_lines": 21,
+      "overriden_lines": 0
+    },
+    "54aef2b833f8b4cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80beea8-9017-43cb-9490-ecdc90b610cc",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "ekaansh <ekaansh.arora@zoom.us>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "761e32a86779e693": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c5f0d777-edfc-46b9-bc61-155719e8a7f8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 155,
+      "total_deletions": 132,
+      "accepted_lines": 154,
+      "overriden_lines": 0
+    },
+    "adeb691e101f2088": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "db2245f2-d44f-4b1a-ba76-8941709fcd1b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "ekaansh <ekaansh.arora@zoom.us>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    },
+    "ff3ab361adf9ea5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d601af6-34b1-40df-85d6-f19bea4e83b4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
