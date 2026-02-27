@@ -43,7 +43,7 @@ export function FastTab() {
 
     return (
         <div className="lg:grid lg:grid-cols-[3fr_2fr] lg:items-start gap-5">
-            <form onSubmit={submit} className="flex flex-col gap-5">
+            <form id="fast-form" onSubmit={submit} className="flex flex-col gap-5">
                 <Card>
                     <SectionHeading title="Audio File" />
                     <div
@@ -105,6 +105,7 @@ export function FastTab() {
             <div className="lg:sticky lg:top-20">
 
                 <button
+                    form="fast-form"
                     type="submit"
                     disabled={busy}
                     className={[
