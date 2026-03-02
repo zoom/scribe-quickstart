@@ -8,10 +8,16 @@ A Node.js/Express server that proxies to the [Zoom AI Scribe API](https://develo
 - **Batch jobs** — Create, list, get, and delete Scribe batch jobs using S3 input/output buckets.
 - **Webhooks** — Optional `POST /webhooks/scribe` endpoint to receive job status notifications.
 
+## Prerequisites
+
+- A Zoom developer account for the Build platform
+- For batch: IAM credentials to access an S3 bucket
+- Node.js v24+
+
 ## Installation
 
 ```bash
-git clone https://github.com/zoom/scribe-api-quickstart.git
+git clone https://github.com/zoom/scribe-quickstart.git
 cd scribe-quickstart
 npm install
 ```
