@@ -9,3 +9,6 @@ OpenAPI_export.json
 *.swp
 *.swo
 bun.lock
+dist
+src/*.js
+src/*.js.map

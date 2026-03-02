@@ -66,7 +66,7 @@ This will generate a temporary AWS STS credentials and write them to the `.env` 
 3. Start the server:
 
    ```bash
-   npm run start
+   npm start
    ```
 
    The server runs at `http://localhost:4000` (or your `PORT`).

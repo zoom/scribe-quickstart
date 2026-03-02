@@ -3,13 +3,15 @@
   "name": "scribe-quickstart",
   "version": "1.0.0",
   "description": "Zoom AI Scribe API Quickstart",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
   "engines": {
     "node": ">=24.0.0"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "format": "prettier --write src/*.ts",
-    "start": "node src/index.ts",
+    "start": "npm run build && node dist/index.js",
+    "start:compiled": "node dist/index.js",
     "playground": "cd playground && npm run dev"
   },
   "author": "Zoom Video Communications, Inc.",
@@ -31,6 +33,7 @@
     "@types/express": "^5.0.6",
     "@types/multer": "^1.4.12",
     "@types/jsrsasign": "^10.5.15",
+    "@types/node": "^24.0.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2"
   }

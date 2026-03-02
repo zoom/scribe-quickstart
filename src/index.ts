@@ -1,7 +1,7 @@
 import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
-import { generateJWT } from './util.ts'
+import { generateJWT } from './util.js'
 import multer from 'multer'
 dotenv.config()
 
