@@ -1,8 +1,9 @@
 import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
-import { generateJWT } from './util.js'
+import { generateJWT, getEnvAwsCredentials, isS3, withAwsAuth } from './util.js'
 import multer from 'multer'
+import type { BatchJobRequest, BatchOutput } from './util.js'
 dotenv.config()
 
 const BASE_PATH = 'https://api.zoom.us/v2/aiservices/scribe'
@@ -41,34 +42,26 @@ app.post('/transcribe', upload.single('file'), async (req, res) => {
 // Body is forwarded to the Zoom API with AWS creds injected if provided/env-configured
 app.post('/batch/jobs', async (req, res) => {
     try {
-        const body = req.body as {
-            input?: {
-                source?: string
-                mode?: string
-                uri?: string
-                manifest?: string[]
-                filters?: { include_globs?: string[]; exclude_globs?: string[] }
-                aws?: { access_key_id?: string; secret_access_key?: string; session_token?: string }
-            }
-            output?: { destination?: string; uri?: string; layout?: string }
-            config?: Record<string, unknown>
-            reference_id?: string
-            notifications?: { webhook_url?: string; secret?: string }
-        }
+        const body = req.body as BatchJobRequest
+        const envAws = getEnvAwsCredentials()
 
-        // Fall back to env vars for AWS creds only when source is S3 (not needed for public https URIs)
-        const isS3Input = body.input?.source === 'S3'
-        const aws = !isS3Input ? undefined
-            : body.input?.aws?.access_key_id ? body.input.aws
-                : {
-                    access_key_id: process.env.AWS_ACCESS_KEY_ID,
-                    secret_access_key: process.env.AWS_SECRET_ACCESS_KEY,
-                    session_token: process.env.AWS_SESSION_TOKEN,
-                }
+        const inputSource = body.input?.source ?? (body.input?.uri?.startsWith('s3://') ? 's3' : undefined)
+        const inputAws = isS3(inputSource) ? (body.input?.auth?.aws ?? envAws) : undefined
+        const input = withAwsAuth(body.input, inputAws)
+
+        const outputBase: BatchOutput = {
+            destination: body.output?.destination ?? 's3',
+            uri: body.output?.uri ?? body.input?.uri,
+            layout: body.output?.layout ?? 'ADJACENT',
+            overwrite: body.output?.overwrite ?? false,
+            ...(body.output?.auth && { auth: body.output.auth }),
+        }
+        const outputAws = isS3(outputBase.destination) ? (outputBase.auth?.aws ?? envAws) : undefined
+        const output = withAwsAuth(outputBase, outputAws)
 
         const payload = {
-            input: { ...body.input, ...(aws && { aws }) },
-            output: body.output ?? { destination: 'S3', layout: 'ADJACENT', uri: body.input?.uri },
+            ...(input && { input }),
+            output,
             config: body.config ?? { language: 'en-US' },
             ...(body.reference_id && { reference_id: body.reference_id }),
             ...(body.notifications?.webhook_url && { notifications: body.notifications }),

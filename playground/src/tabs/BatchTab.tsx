@@ -69,7 +69,7 @@ export function BatchTab() {
             const isHttpInput = form.inputMode === 'MANIFEST'
                 ? (manifestList ?? []).every(u => u.startsWith('http'))
                 : form.inputUri.startsWith('http')
-            const inputSource = isHttpInput ? undefined : 'S3'
+            const inputSource = isHttpInput ? undefined : 's3'
 
             const payload = {
                 input: {
@@ -78,13 +78,14 @@ export function BatchTab() {
                     ...(form.inputUri && { uri: form.inputUri }),
                     ...(manifestList && { manifest: manifestList }),
                     ...((includeGlobs || excludeGlobs) && { filters: { ...(includeGlobs && { include_globs: includeGlobs }), ...(excludeGlobs && { exclude_globs: excludeGlobs }) } }),
-                    ...(inputAws && { aws: inputAws }),
+                    ...(inputAws && { auth: { aws: inputAws } }),
                 },
                 output: {
-                    destination: 'S3',
+                    destination: 's3',
                     uri: form.outputUri,
                     layout: form.outputLayout,
-                    ...(outputAws && { aws: outputAws }),
+                    overwrite: false,
+                    ...(outputAws && { auth: { aws: outputAws } }),
                 },
                 config: form.config,
                 ...(form.referenceId && { reference_id: form.referenceId }),
@@ -144,7 +145,7 @@ export function BatchTab() {
                                 </Field>
                             )}
 
-                            {form.inputMode === 'INPUT_PREFIX' && (
+                            {form.inputMode === 'PREFIX' && (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <Field label="Include Globs" hint="Comma-separated — **/*.wav, **/*.mp3">
                                         <input className={inputCls + ' font-mono text-xs'} value={form.includeGlobs} onChange={e => set('includeGlobs', e.target.value)} placeholder="**/*.wav, **/*.mp3" />

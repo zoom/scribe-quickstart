@@ -4,9 +4,9 @@ A Node.js/Express server that proxies to the [Zoom AI Scribe API](https://develo
 
 ## Features
 
-- **Sync transcription** — `POST /transcribe` with an audio/video file; returns transcript with optional timestamps and diarization.
+- **Sync transcription** — `POST /transcribe` with an audio/video file, returns transcript in the response.
 - **Batch jobs** — Create, list, get, and delete Scribe batch jobs using S3 input/output buckets.
-- **Webhooks** — Optional `POST /webhooks/scribe` endpoint to receive job status notifications.
+- **Webhooks** — `POST /webhooks/scribe` endpoint to receive job status notifications.
 
 ## Prerequisites
 

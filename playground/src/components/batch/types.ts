@@ -29,7 +29,7 @@ export type JobInput = {
     uri?: string
     manifest?: string[]
     filters?: { include_globs?: string[]; exclude_globs?: string[] } | null
-    aws?: unknown
+    auth?: unknown
 }
 
 export type JobOutput = {
@@ -37,6 +37,7 @@ export type JobOutput = {
     uri: string
     layout: string
     overwrite: boolean
+    auth?: unknown
 }
 
 export type JobResponse = {
@@ -72,8 +73,8 @@ export function isJobResponse(d: BatchApiResponse): d is JobResponse {
 
 export type Job = { job_id: string; state: string; submitted_at?: string }
 
-export type InputMode = 'SINGLE' | 'INPUT_PREFIX' | 'MANIFEST'
-export type OutputLayout = 'ADJACENT' | 'PREFIX'
+export type InputMode = 'SINGLE' | 'PREFIX' | 'MANIFEST'
+export type OutputLayout = 'SINGLE' | 'ADJACENT' | 'PREFIX'
 
 export type BatchFormState = {
     inputMode: InputMode
@@ -99,14 +100,13 @@ export type BatchFormState = {
 }
 
 export const defaultBatch: BatchFormState = {
-    inputMode: 'INPUT_PREFIX', inputUri: '', manifest: '',
+    inputMode: 'PREFIX', inputUri: '', manifest: '',
     includeGlobs: '', excludeGlobs: '',
     inputAwsFromEnv: true, inputAwsKeyId: '', inputAwsSecret: '', inputAwsSession: '',
     outputUri: '', outputLayout: 'ADJACENT',
     outputAwsFromEnv: true, outputAwsKeyId: '', outputAwsSecret: '', outputAwsSession: '',
     config: {
         language: 'en-US',
-        timestamps: false,
         word_time_offsets: false,
         channel_separation: false,
         diarization: false,
@@ -119,7 +119,7 @@ export const defaultBatch: BatchFormState = {
 
 export const MODE_DESCRIPTIONS: Record<InputMode, { title: string; hint: string }> = {
     SINGLE: { title: 'Single file', hint: 'One S3 audio file' },
-    INPUT_PREFIX: { title: 'S3 directory', hint: 'All files under an S3 prefix' },
+    PREFIX: { title: 'S3 directory', hint: 'All files under an S3 prefix' },
     MANIFEST: { title: 'Manifest', hint: 'List of S3 URIs or public URLs' },
 }
 

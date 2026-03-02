@@ -11,7 +11,6 @@ export const selectCls = inputCls + ' cursor-pointer'
 
 export type AsrConfig = {
     language: string
-    timestamps: boolean
     word_time_offsets: boolean
     channel_separation: boolean
     diarization: boolean
@@ -21,7 +20,6 @@ export type AsrConfig = {
 
 export const defaultAsrConfig: AsrConfig = {
     language: 'en-US',
-    timestamps: false,
     word_time_offsets: false,
     channel_separation: false,
     diarization: false,
