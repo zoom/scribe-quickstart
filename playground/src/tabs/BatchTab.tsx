@@ -69,7 +69,7 @@ export function BatchTab() {
             const isHttpInput = form.inputMode === 'MANIFEST'
                 ? (manifestList ?? []).every(u => u.startsWith('http'))
                 : form.inputUri.startsWith('http')
-            const inputSource = isHttpInput ? undefined : 's3'
+            const inputSource = isHttpInput ? undefined : 'S3'
 
             const payload = {
                 input: {
@@ -81,7 +81,7 @@ export function BatchTab() {
                     ...(inputAws && { auth: { aws: inputAws } }),
                 },
                 output: {
-                    destination: 's3',
+                    destination: 'S3',
                     uri: form.outputUri,
                     layout: form.outputLayout,
                     overwrite: false,

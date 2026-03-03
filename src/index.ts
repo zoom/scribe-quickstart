@@ -1,4 +1,5 @@
 import cors from 'cors'
+import crypto from 'crypto'
 import dotenv from 'dotenv'
 import express from 'express'
 import { generateJWT, getEnvAwsCredentials, isS3, withAwsAuth } from './util.js'
@@ -19,8 +20,12 @@ const app = express()
 const port = process.env.PORT || 4000
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } })
 
-app.use(express.json(), cors())
+app.use(cors())
 app.options('*', cors())
+// POST /webhooks/scribe — receive job status notifications
+// Registered before express.json() so we can access the raw body for HMAC verification
+app.post('/webhooks/scribe', express.raw({ type: 'application/json' }), handleWebhook)
+app.use(express.json())
 
 // POST /transcribe — synchronous transcription
 // Accepts multipart/form-data with `file` and optional `config` JSON fields
@@ -45,12 +50,12 @@ app.post('/batch/jobs', async (req, res) => {
         const body = req.body as BatchJobRequest
         const envAws = getEnvAwsCredentials()
 
-        const inputSource = body.input?.source ?? (body.input?.uri?.startsWith('s3://') ? 's3' : undefined)
+        const inputSource = body.input?.source ?? (body.input?.uri?.startsWith('s3://') ? 'S3' : undefined)
         const inputAws = isS3(inputSource) ? (body.input?.auth?.aws ?? envAws) : undefined
         const input = withAwsAuth(body.input, inputAws)
 
         const outputBase: BatchOutput = {
-            destination: body.output?.destination ?? 's3',
+            destination: body.output?.destination ?? 'S3',
             uri: body.output?.uri ?? body.input?.uri,
             layout: body.output?.layout ?? 'ADJACENT',
             overwrite: body.output?.overwrite ?? false,
@@ -101,10 +106,24 @@ app.delete('/batch/jobs/:jobId', async (req, res) => {
     } catch (e: unknown) { res.status(502).json({ error: (e as Error).message }) }
 })
 
-// POST /webhooks/scribe — receive job status notifications
-app.post('/webhooks/scribe', (req, res) => {
-    console.log(`[webhook] ${req.body.event} — job ${req.body.payload?.job_id} → ${req.body.payload?.status}`)
+function handleWebhook(req: express.Request, res: express.Response) {
+    const rawBody = req.body as Buffer
+    const body = JSON.parse(rawBody.toString('utf8'))
+    const secret = process.env.WEBHOOK_SECRET
+    if (secret) {
+        const signature = req.headers['x-zm-signature'] as string
+        const timestamp = req.headers['x-zm-request-timestamp'] as string
+        if (!signature || !timestamp) { res.status(401).json({ error: 'Missing signature or timestamp header' }); return }
+        const message = `v0:${timestamp}:${rawBody.toString('utf8')}`
+        const expected = `sha256=${crypto.createHmac('sha256', secret).update(message).digest('hex')}`
+        if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+            console.log(`[webhook] invalid signature`);
+            res.status(401).json({ error: 'Invalid signature' }); return
+        }
+    }
+    console.log(`[webhook] job ${body.job?.job_id}: ${body.event_type}`);
+    if (body.job?.summary) console.log(`[webhook] summary:`, body.job.summary);
     res.json({ status: 'received' })
-})
+}
 
 app.listen(port, () => console.log(`Scribe API listening on port ${port}`))
