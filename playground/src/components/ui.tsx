@@ -32,7 +32,7 @@ export function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: 
 export function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: string; checked: boolean; onChange: (v: boolean) => void }) {
     return (
         <div
-            className="flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+            className="flex items-center justify-between gap-4 px-3 py-2.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => onChange(!checked)}
         >
             <div>

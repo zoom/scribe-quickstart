@@ -107,11 +107,7 @@ export const defaultBatch: BatchFormState = {
     outputAwsFromEnv: true, outputAwsKeyId: '', outputAwsSecret: '', outputAwsSession: '',
     config: {
         language: 'en-US',
-        word_time_offsets: false,
         channel_separation: false,
-        diarization: false,
-        profanity_filter: false,
-        output_format: 'json',
     },
     referenceId: '', webhookUrl: '', webhookSecret: '',
     stateFilter: '',

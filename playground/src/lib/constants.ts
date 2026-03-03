@@ -11,18 +11,10 @@ export const selectCls = inputCls + ' cursor-pointer'
 
 export type AsrConfig = {
     language: string
-    word_time_offsets: boolean
     channel_separation: boolean
-    diarization: boolean
-    profanity_filter: boolean
-    output_format: string
 }
 
 export const defaultAsrConfig: AsrConfig = {
     language: 'en-US',
-    word_time_offsets: false,
     channel_separation: false,
-    diarization: false,
-    profanity_filter: false,
-    output_format: 'json',
 }

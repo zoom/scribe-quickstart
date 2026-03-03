@@ -83,7 +83,7 @@ export function BatchTab() {
                 output: {
                     destination: 'S3',
                     uri: form.outputUri,
-                    layout: form.outputLayout,
+                    layout: form.inputMode === 'PREFIX' ? form.outputLayout : 'PREFIX',
                     overwrite: false,
                     ...(outputAws && { auth: { aws: outputAws } }),
                 },
@@ -137,7 +137,7 @@ export function BatchTab() {
                     {/* Input */}
                     <CollapsibleCard title="Input">
                         <div className="flex flex-col gap-4">
-                            <ModeSelector value={form.inputMode} onChange={v => set('inputMode', v)} />
+                            <ModeSelector value={form.inputMode} onChange={v => { set('inputMode', v); if (v !== 'PREFIX') set('outputLayout', 'PREFIX') }} />
 
                             {form.inputMode !== 'MANIFEST' && (
                                 <Field label="S3 URI" hint={form.inputMode === 'SINGLE' ? 's3://bucket/audio/call.wav' : 's3://bucket/audio/2025/11/'}>
@@ -186,12 +186,16 @@ export function BatchTab() {
                         <div className="flex flex-col gap-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <Field label="Layout" hint="Where transcripts will be written">
-                                    <select className={selectCls} value={form.outputLayout} onChange={e => set('outputLayout', e.target.value as OutputLayout)}>
-                                        <option value="ADJACENT">ADJACENT — next to input file</option>
-                                        <option value="PREFIX">PREFIX — under output URI</option>
-                                    </select>
+                                    {form.inputMode === 'PREFIX' ? (
+                                        <select className={selectCls} value={form.outputLayout} onChange={e => set('outputLayout', e.target.value as OutputLayout)}>
+                                            <option value="ADJACENT">ADJACENT — next to input file</option>
+                                            <option value="PREFIX">PREFIX — under output URI</option>
+                                        </select>
+                                    ) : (
+                                        <div className={inputCls + ' text-gray-400 select-none'}>PREFIX — under output URI</div>
+                                    )}
                                 </Field>
-                                {form.outputLayout === 'PREFIX' && (
+                                {(form.outputLayout === 'PREFIX' || form.inputMode !== 'PREFIX') && (
                                     <Field label="S3 URI" hint="Bucket URI for transcripts">
                                         <input className={inputCls + ' font-mono text-xs'} value={form.outputUri} onChange={e => set('outputUri', e.target.value)} placeholder="s3://my-bucket/transcripts/" />
                                     </Field>
