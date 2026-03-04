@@ -41,9 +41,9 @@ This will generate a temporary AWS STS credentials and write them to the `.env` 
 
    | Variable           | Required | Description                                      |
    | ------------------ | -------- | ------------------------------------------------ |
-   | `ZOOM_API_KEY`     | **Yes**  | Zoom server-to-server app API key                |
-   | `ZOOM_API_SECRET`  | **Yes**  | Zoom server-to-server app API secret             |
-   | `PORT`             | No       | Server port (default: `4000`)                     |
+   | `ZOOM_API_KEY`     | **Yes**  | Zoom Build platform API key                      |
+   | `ZOOM_API_SECRET`  | **Yes**  | Zoom Build platform API secret                   |
+   | `PORT`             | No       | Server port (default: `4000`)                    |
    | `LANGUAGE`         | No       | Default transcription language (default: `en-US`)|
 
    For **batch jobs** you must also set:
