@@ -1,6 +1,6 @@
 # Zoom AI Scribe API Quickstart
 
-A Node.js/Express server that proxies to the [Zoom AI Scribe API](https://developers.zoom.us/docs/ai-scribe/) for speech-to-text transcription. It handles JWT authentication and exposes simple REST endpoints for **fast mode** (with file upload) and **batch jobs** (S3-based).
+A Node.js/Express server that proxies to the [Zoom AI Scribe API](https://developers.zoom.us/docs/ai-services/scribe/) for speech-to-text transcription. It handles JWT authentication and exposes simple REST endpoints for **fast mode** (with file upload) and **batch jobs** (S3-based).
 
 ## Features
 
@@ -24,7 +24,7 @@ npm install
 
 ## Setup
 
-1. Copy environment variables and add your [Zoom API](https://developers.zoom.us/docs/ai-scribe/setup/) and [AWS Security Token Service](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html) credentials:
+1. Copy environment variables and add your [Zoom Build Platform](https://developers.zoom.us/docs/ai-services/build-platform/) and [AWS Security Token Service](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp.html) credentials:
 
    ```bash
    cp .env.example .env
@@ -32,36 +32,37 @@ npm install
 
 You can use `scripts/generate-sts-creds.sh` to generate temporary AWS STS credentials using your IAM access key and secret key if you have the aws cli installed:
 
-   ```bash
-   ./scripts/generate-sts-creds.sh <AWS_ACCESS_KEY_ID> <AWS_SECRET_ACCESS_KEY>
-   ```
+```bash
+./scripts/generate-sts-creds.sh <AWS_ACCESS_KEY_ID> <AWS_SECRET_ACCESS_KEY>
+```
+
 This will generate a temporary AWS STS credentials and write them to the `.env` file.
 
 2. Edit `.env` and set at minimum:
 
-   | Variable           | Required | Description                                      |
-   | ------------------ | -------- | ------------------------------------------------ |
-   | `ZOOM_API_KEY`     | **Yes**  | Zoom Build platform API key                      |
-   | `ZOOM_API_SECRET`  | **Yes**  | Zoom Build platform API secret                   |
-   | `PORT`             | No       | Server port (default: `4000`)                    |
-   | `LANGUAGE`         | No       | Default transcription language (default: `en-US`)|
+   | Variable          | Required | Description                                       |
+   | ----------------- | -------- | ------------------------------------------------- |
+   | `ZOOM_API_KEY`    | **Yes**  | Zoom Build platform API key                       |
+   | `ZOOM_API_SECRET` | **Yes**  | Zoom Build platform API secret                    |
+   | `PORT`            | No       | Server port (default: `4000`)                     |
+   | `LANGUAGE`        | No       | Default transcription language (default: `en-US`) |
 
    For **batch jobs** you must also set:
 
-   | Variable               | Required for batch | Description                    |
-   | ---------------------- | ------------------- | ------------------------------ |
-   | `S3_INPUT_URI`         | Yes                 | S3 URI for input files (e.g. `s3://bucket/`) |
-   | `S3_OUTPUT_URI`        | Yes                 | S3 URI for output transcripts  |
-   | `AWS_ACCESS_KEY_ID`    | Yes                 | AWS credentials for Scribe     |
-   | `AWS_SECRET_ACCESS_KEY`| Yes                 | AWS credentials for Scribe     |
-   | `AWS_SESSION_TOKEN`    | Yes (if using temp) | AWS session token              |
+   | Variable                | Required for batch  | Description                                  |
+   | ----------------------- | ------------------- | -------------------------------------------- |
+   | `S3_INPUT_URI`          | Yes                 | S3 URI for input files (e.g. `s3://bucket/`) |
+   | `S3_OUTPUT_URI`         | Yes                 | S3 URI for output transcripts                |
+   | `AWS_ACCESS_KEY_ID`     | Yes                 | AWS credentials for Scribe                   |
+   | `AWS_SECRET_ACCESS_KEY` | Yes                 | AWS credentials for Scribe                   |
+   | `AWS_SESSION_TOKEN`     | Yes (if using temp) | AWS session token                            |
 
    Optional:
 
-   | Variable         | Description                          |
-   | ---------------- | ------------------------------------ |
-   | `WEBHOOK_URL`    | URL for batch job status webhooks    |
-   | `WEBHOOK_SECRET` | Secret to verify webhook payloads    |
+   | Variable         | Description                       |
+   | ---------------- | --------------------------------- |
+   | `WEBHOOK_URL`    | URL for batch job status webhooks |
+   | `WEBHOOK_SECRET` | Secret to verify webhook payloads |
 
 3. Start the server:
 
