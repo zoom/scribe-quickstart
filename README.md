@@ -93,4 +93,5 @@ A small web UI is provided to try transcription and batch jobs.
 ## Need help?
 
 - [Zoom AI Scribe documentation](https://developers.zoom.us/docs/ai-services/scribe)
+- [API Reference](https://developers.zoom.us/docs/api/ai-services/)
 - [Developer Support](https://devsupport.zoom.us) · [Developer Forum](https://devforum.zoom.us)
