@@ -1,6 +1,8 @@
 # Zoom AI Scribe API Quickstart
 
-A Node.js/Express server that proxies to the [Zoom AI Scribe API](https://developers.zoom.us/docs/ai-services/scribe/) for speech-to-text transcription. It handles JWT authentication and exposes simple REST endpoints for **fast mode** (with file upload) and **batch jobs** (S3-based).
+A Node.js/Express server for the [Zoom AI Scribe API](https://developers.zoom.us/docs/ai-services/scribe/) for speech-to-text transcription. It handles JWT authentication and exposes simple REST endpoints for **fast mode** (with file upload) and **batch jobs** (S3-based). Use the Vite playground to test the API with a web UI.
+
+![screenshot](https://github.com/user-attachments/assets/6c99d0b4-f5bb-4cd0-8cca-f7a6bf1eb50e)
 
 ## Features
 
