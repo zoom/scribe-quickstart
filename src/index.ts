@@ -29,6 +29,7 @@ app.use(express.json())
 
 // POST /transcribe — synchronous transcription
 // Accepts multipart/form-data with `file` and optional `config` JSON fields
+// Forwards to Zoom as JSON with base64-encoded data URI
 app.post('/transcribe', upload.single('file'), async (req, res) => {
     try {
         if (!req.file) { res.status(400).json({ error: 'Missing "file" field' }); return }
@@ -36,10 +37,13 @@ app.post('/transcribe', upload.single('file'), async (req, res) => {
         if (req.body.config) {
             try { config = JSON.parse(req.body.config) } catch { /* use default */ }
         }
-        const form = new FormData()
-        form.append('file', new Blob([new Uint8Array(req.file.buffer)]), req.file.originalname)
-        form.append('config', JSON.stringify(config))
-        res.json(await makeZoomRequest('/transcribe', { method: 'POST', body: form }))
+        const base64File = Buffer.from(req.file.buffer).toString('base64')
+        const dataUri = `data:${req.file.mimetype};base64,${base64File}`
+        res.json(await makeZoomRequest('/transcribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file: dataUri, config }),
+        }))
     } catch (e: unknown) { res.status(502).json({ error: (e as Error).message }) }
 })
 
