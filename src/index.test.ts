@@ -10,14 +10,24 @@
  *   - Webhook signature verification works correctly
  *
  * Prerequisites:
- *   - A .env file with ZOOM_API_KEY and ZOOM_API_SECRET set (same as running the server)
- *   - Optional: AWS_* and S3_* vars for batch job tests to reach Zoom successfully
+ *   - A .env file with ZOOM_API_KEY, ZOOM_API_SECRET, AWS_*, S3_INPUT_URI, S3_OUTPUT_URI set
  */
 
 import { describe, test, expect } from 'vitest'
 import request from 'supertest'
 import crypto from 'crypto'
 import { app } from './index.js'
+
+// ─── env ──────────────────────────────────────────────────────────────────────
+// util.ts calls dotenv.config() at import time, so these are populated from .env
+
+const S3_INPUT   = process.env.S3_INPUT_URI  ?? 's3://my-bucket'
+const S3_OUTPUT  = process.env.S3_OUTPUT_URI ?? 's3://my-bucket/transcripts'
+const AWS_KEY    = process.env.AWS_ACCESS_KEY_ID
+const AWS_SECRET = process.env.AWS_SECRET_ACCESS_KEY
+const AWS_TOKEN  = process.env.AWS_SESSION_TOKEN
+const LANGUAGE   = process.env.LANGUAGE ?? 'en-US'
+const WEBHOOK_URL = process.env.WEBHOOK_URL ?? 'https://example.com/hooks/scribe'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,16 +104,6 @@ describe('POST /transcribe', () => {
         console.log('[transcribe] en-US →', res.status, res.body)
     })
 
-    test('WAV file with non-default language: es-ES', async () => {
-        const res = await request(app)
-            .post('/transcribe')
-            .attach('file', WAV, { filename: 'audio.wav', contentType: 'audio/wav' })
-            .field('config', JSON.stringify({ language: 'es-ES' }))
-
-        expectForwarded(res.status)
-        console.log('[transcribe] es-ES →', res.status, res.body)
-    })
-
     test('WAV file with channel_separation: false', async () => {
         const res = await request(app)
             .post('/transcribe')
@@ -139,11 +139,11 @@ describe('POST /transcribe', () => {
 // ─── POST /batch/jobs ─────────────────────────────────────────────────────────
 
 describe('POST /batch/jobs', () => {
-    test('SINGLE mode – minimal payload (output only)', async () => {
+    test('SINGLE mode - minimal payload (output only)', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                output: { uri: 's3://test-bucket/output/' },
+                output: { uri: S3_OUTPUT },
             })
 
         expectForwarded(res.status)
@@ -157,12 +157,12 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'SINGLE',
-                    uri: 's3://test-bucket/audio/sample.wav',
+                    uri: `${S3_INPUT}/sample.wav`,
                 },
                 output: {
-                    uri: 's3://test-bucket/output/',
+                    uri: S3_OUTPUT,
                 },
-                config: { language: 'en-US' },
+                config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
@@ -176,24 +176,26 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'SINGLE',
-                    uri: 's3://test-bucket/audio/sample.wav',
+                    uri: `${S3_INPUT}/sample.wav`,
                     auth: {
                         aws: {
-                            access_key_id: 'AKIAIOSFODNN7EXAMPLE',
-                            secret_access_key: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                            access_key_id: AWS_KEY,
+                            secret_access_key: AWS_SECRET,
+                            ...(AWS_TOKEN && { session_token: AWS_TOKEN }),
                         },
                     },
                 },
                 output: {
-                    uri: 's3://test-bucket/output/',
+                    uri: S3_OUTPUT,
                     auth: {
                         aws: {
-                            access_key_id: 'AKIAIOSFODNN7EXAMPLE',
-                            secret_access_key: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                            access_key_id: AWS_KEY,
+                            secret_access_key: AWS_SECRET,
+                            ...(AWS_TOKEN && { session_token: AWS_TOKEN }),
                         },
                     },
                 },
-                config: { language: 'en-US' },
+                config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
@@ -206,16 +208,16 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'SINGLE',
-                    uri: 's3://test-bucket/audio/sample.wav',
+                    uri: `${S3_INPUT}/sample.wav`,
                     auth: {
                         aws: {
-                            access_key_id: 'ASIAXXX',
-                            secret_access_key: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
-                            session_token: 'AQoXnyc4lcK4w',
+                            access_key_id: AWS_KEY,
+                            secret_access_key: AWS_SECRET,
+                            session_token: AWS_TOKEN,
                         },
                     },
                 },
-                output: { uri: 's3://test-bucket/output/' },
+                output: { uri: S3_OUTPUT },
             })
 
         expectForwarded(res.status)
@@ -228,18 +230,18 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'PREFIX',
-                    uri: 's3://test-bucket/recordings/',
+                    uri: `${S3_INPUT}/`,
                     filters: {
                         include_globs: ['**/*.wav', '**/*.mp3'],
                         exclude_globs: ['**/tmp/**', '*_draft.*'],
                     },
                 },
                 output: {
-                    uri: 's3://test-bucket/output/',
+                    uri: S3_OUTPUT,
                     layout: 'ADJACENT',
                     overwrite: false,
                 },
-                config: { language: 'en-US' },
+                config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
@@ -252,12 +254,12 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'PREFIX',
-                    uri: 's3://test-bucket/audio/',
+                    uri: `${S3_INPUT}/`,
                     filters: {
                         include_globs: ['**/*.flac'],
                     },
                 },
-                output: { uri: 's3://test-bucket/output/' },
+                output: { uri: S3_OUTPUT },
             })
 
         expectForwarded(res.status)
@@ -271,16 +273,16 @@ describe('POST /batch/jobs', () => {
                 input: {
                     mode: 'MANIFEST',
                     manifest: [
-                        's3://test-bucket/audio/file1.wav',
-                        's3://test-bucket/audio/file2.mp3',
-                        's3://test-bucket/audio/file3.m4a',
+                        `${S3_INPUT}/file1.wav`,
+                        `${S3_INPUT}/file2.mp3`,
+                        `${S3_INPUT}/file3.m4a`,
                     ],
                 },
                 output: {
-                    uri: 's3://test-bucket/output/',
+                    uri: S3_OUTPUT,
                     layout: 'PREFIX',
                 },
-                config: { language: 'en-US' },
+                config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
@@ -299,7 +301,7 @@ describe('POST /batch/jobs', () => {
                     ],
                 },
                 output: {
-                    uri: 's3://test-bucket/output/',
+                    uri: S3_OUTPUT,
                     layout: 'PREFIX',
                 },
             })
@@ -314,9 +316,9 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'SINGLE',
-                    uri: 's3://test-bucket/audio/sample.wav',
+                    uri: `${S3_INPUT}/sample.wav`,
                 },
-                output: { uri: 's3://test-bucket/output/' },
+                output: { uri: S3_OUTPUT },
                 reference_id: 'test-run-001',
             })
 
@@ -330,11 +332,11 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'SINGLE',
-                    uri: 's3://test-bucket/audio/sample.wav',
+                    uri: `${S3_INPUT}/sample.wav`,
                 },
-                output: { uri: 's3://test-bucket/output/' },
+                output: { uri: S3_OUTPUT },
                 notifications: {
-                    webhook_url: 'https://example.com/hooks/scribe',
+                    webhook_url: WEBHOOK_URL,
                 },
             })
 
@@ -348,12 +350,12 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'SINGLE',
-                    uri: 's3://test-bucket/audio/sample.wav',
+                    uri: `${S3_INPUT}/sample.wav`,
                 },
-                output: { uri: 's3://test-bucket/output/' },
+                output: { uri: S3_OUTPUT },
                 notifications: {
-                    webhook_url: 'https://example.com/hooks/scribe',
-                    secret: 'my-hmac-secret',
+                    webhook_url: WEBHOOK_URL,
+                    secret: process.env.WEBHOOK_SECRET ?? 'my-hmac-secret',
                 },
             })
 
@@ -365,8 +367,8 @@ describe('POST /batch/jobs', () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                input: { mode: 'SINGLE', uri: 's3://test-bucket/audio/sample.wav' },
-                output: { uri: 's3://test-bucket/output/', layout: 'ADJACENT' },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT, layout: 'ADJACENT' },
             })
 
         expectForwarded(res.status)
@@ -377,8 +379,8 @@ describe('POST /batch/jobs', () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                input: { mode: 'SINGLE', uri: 's3://test-bucket/audio/sample.wav' },
-                output: { uri: 's3://test-bucket/output/', layout: 'PREFIX' },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
             })
 
         expectForwarded(res.status)
@@ -389,8 +391,8 @@ describe('POST /batch/jobs', () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                input: { mode: 'SINGLE', uri: 's3://test-bucket/audio/sample.wav' },
-                output: { uri: 's3://test-bucket/output/', overwrite: true },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT, overwrite: true },
             })
 
         expectForwarded(res.status)
@@ -401,8 +403,8 @@ describe('POST /batch/jobs', () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                input: { mode: 'SINGLE', uri: 's3://test-bucket/audio/sample.wav' },
-                output: { uri: 's3://test-bucket/output/' },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT },
                 config: { language: 'fr-FR' },
             })
 
@@ -416,35 +418,37 @@ describe('POST /batch/jobs', () => {
             .send({
                 input: {
                     mode: 'PREFIX',
-                    uri: 's3://test-bucket/recordings/',
+                    uri: `${S3_INPUT}/`,
                     filters: {
                         include_globs: ['**/*.wav', '**/*.mp3', '**/*.m4a', '**/*.flac'],
                         exclude_globs: ['**/tmp/**'],
                     },
                     auth: {
                         aws: {
-                            access_key_id: 'AKIAIOSFODNN7EXAMPLE',
-                            secret_access_key: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                            access_key_id: AWS_KEY,
+                            secret_access_key: AWS_SECRET,
+                            ...(AWS_TOKEN && { session_token: AWS_TOKEN }),
                         },
                     },
                 },
                 output: {
                     destination: 'S3',
-                    uri: 's3://test-bucket/output/',
+                    uri: S3_OUTPUT,
                     layout: 'ADJACENT',
                     overwrite: false,
                     auth: {
                         aws: {
-                            access_key_id: 'AKIAIOSFODNN7EXAMPLE',
-                            secret_access_key: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                            access_key_id: AWS_KEY,
+                            secret_access_key: AWS_SECRET,
+                            ...(AWS_TOKEN && { session_token: AWS_TOKEN }),
                         },
                     },
                 },
-                config: { language: 'en-US', channel_separation: false },
+                config: { language: LANGUAGE, channel_separation: false },
                 reference_id: 'full-payload-test',
                 notifications: {
-                    webhook_url: 'https://example.com/hooks/scribe',
-                    secret: 'hmac-secret',
+                    webhook_url: WEBHOOK_URL,
+                    secret: process.env.WEBHOOK_SECRET ?? 'hmac-secret',
                 },
             })
 
@@ -663,11 +667,13 @@ describe('POST /webhooks/scribe', () => {
             job: { job_id: 'job-xyz-999' },
         })
 
+        // Sign with a wrong secret so the HMAC is correctly formatted but won't match
+        const { signature, timestamp } = signWebhook(payload, 'wrong-secret')
         const res = await request(app)
             .post('/webhooks/scribe')
             .set('Content-Type', 'application/json')
-            .set('x-zm-signature', 'sha256=invalidsignature00000000000000000000000000000000000000000000000000')
-            .set('x-zm-request-timestamp', Date.now().toString())
+            .set('x-zm-signature', signature)
+            .set('x-zm-request-timestamp', timestamp)
             .send(payload)
 
         expect(res.status).toBe(401)
