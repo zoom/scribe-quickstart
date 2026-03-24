@@ -130,4 +130,8 @@ function handleWebhook(req: express.Request, res: express.Response) {
     res.json({ status: 'received' })
 }
 
-app.listen(port, () => console.log(`Scribe API listening on port ${port}`))
+if (process.env.NODE_ENV !== 'test') {
+    app.listen(port, () => console.log(`Scribe API listening on port ${port}`))
+}
+
+export { app }

@@ -12,7 +12,9 @@
     "format": "prettier --write src/*.ts",
     "start": "npm run build && node dist/index.js",
     "start:compiled": "node dist/index.js",
-    "playground": "cd playground && npm run dev"
+    "playground": "cd playground && npm run dev",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "author": "Zoom Video Communications, Inc.",
   "contributors": [
@@ -31,10 +33,13 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/multer": "^1.4.13",
     "@types/jsrsasign": "^10.5.15",
+    "@types/multer": "^1.4.13",
     "@types/node": "^24.12.0",
+    "@types/supertest": "^7.2.0",
     "prettier": "^3.8.1",
-    "typescript": "^5.9.3"
+    "supertest": "^7.2.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.1"
   }
 }
