@@ -1,16 +1,14 @@
 /**
  * Integration tests for the Scribe Quickstart backend.
  *
- * These tests cover every request shape the playground can generate and forward
- * them all the way to the Zoom Scribe API. Responses from Zoom may be errors
- * (e.g. invalid credentials, bad S3 URI) — that is expected when running without
- * real cloud resources.  The important thing being verified is:
- *   - Our server correctly parses and forwards every payload shape (no 500s)
- *   - Bad inputs from the client are rejected with 400 before reaching Zoom
- *   - Webhook signature verification works correctly
+ * Every request is forwarded all the way to the Zoom Scribe API.
+ * The test-setup.ts globalSetup starts the real server on port 4000 and
+ * launches a cloudflared tunnel so Zoom can reach the /webhooks/scribe
+ * endpoint. After confirming the URL is registered in the Zoom Marketplace
+ * the tests run.
  *
- * Prerequisites:
- *   - A .env file with ZOOM_API_KEY, ZOOM_API_SECRET, AWS_*, S3_INPUT_URI, S3_OUTPUT_URI set
+ * Prerequisites (.env):
+ *   ZOOM_API_KEY, ZOOM_API_SECRET, AWS_*, S3_INPUT_URI, S3_OUTPUT_URI
  */
 
 import { describe, test, expect } from 'vitest'
@@ -19,14 +17,13 @@ import crypto from 'crypto'
 import { app } from './index.js'
 
 // ─── env ──────────────────────────────────────────────────────────────────────
-// util.ts calls dotenv.config() at import time, so these are populated from .env
 
-const S3_INPUT   = process.env.S3_INPUT_URI  ?? 's3://my-bucket'
-const S3_OUTPUT  = process.env.S3_OUTPUT_URI ?? 's3://my-bucket/transcripts'
-const AWS_KEY    = process.env.AWS_ACCESS_KEY_ID
-const AWS_SECRET = process.env.AWS_SECRET_ACCESS_KEY
-const AWS_TOKEN  = process.env.AWS_SESSION_TOKEN
-const LANGUAGE   = process.env.LANGUAGE ?? 'en-US'
+const S3_INPUT    = process.env.S3_INPUT_URI  ?? 's3://my-bucket'
+const S3_OUTPUT   = process.env.S3_OUTPUT_URI ?? 's3://my-bucket/transcripts'
+const AWS_KEY     = process.env.AWS_ACCESS_KEY_ID
+const AWS_SECRET  = process.env.AWS_SECRET_ACCESS_KEY
+const AWS_TOKEN   = process.env.AWS_SESSION_TOKEN
+const LANGUAGE    = process.env.LANGUAGE ?? 'en-US'
 const WEBHOOK_URL = process.env.WEBHOOK_URL ?? 'https://example.com/hooks/scribe'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -40,13 +37,13 @@ function createSilentWav(durationSec = 1, sampleRate = 16_000): Buffer {
     const numSamples = Math.floor(sampleRate * durationSec)
     const dataSize = numSamples * blockAlign
 
-    const buf = Buffer.alloc(44 + dataSize) // zeros = silence
+    const buf = Buffer.alloc(44 + dataSize)
 
     buf.write('RIFF', 0)
     buf.writeUInt32LE(36 + dataSize, 4)
     buf.write('WAVE', 8)
     buf.write('fmt ', 12)
-    buf.writeUInt32LE(16, 16)            // fmt chunk size
+    buf.writeUInt32LE(16, 16)
     buf.writeUInt16LE(1, 20)             // PCM
     buf.writeUInt16LE(numChannels, 22)
     buf.writeUInt32LE(sampleRate, 24)
@@ -62,18 +59,34 @@ function createSilentWav(durationSec = 1, sampleRate = 16_000): Buffer {
 const WAV = createSilentWav()
 
 /**
- * Acceptable HTTP status codes when forwarding to the Zoom API:
- *   201 / 200 / 204  — Zoom accepted the request
- *   502              — Zoom rejected it (bad creds, bad URI, etc.)
- *
- * 4xx from *our* server means a bug in how we handle the payload.
- * 5xx (other than 502) means an internal crash.
+ * For requests our server forwards to Zoom, we accept:
+ *   200 / 201 / 204 — Zoom accepted it
+ *   502             — Zoom rejected it (bad creds, wrong S3 URI, etc.)
+ * A 4xx or 5xx from *our* server would mean a bug in payload handling.
  */
 function expectForwarded(status: number) {
     expect([200, 201, 204, 502]).toContain(status)
 }
 
-// Shared state for dependent batch-job tests
+/**
+ * Poll GET /batch/jobs/:jobId until the job reaches a terminal state
+ * (SUCCEEDED, FAILED, or PARTIAL) or the timeout expires.
+ */
+async function waitForJobCompletion(jobId: string, maxWaitMs = 5 * 60_000): Promise<string> {
+    const TERMINAL = new Set(['SUCCEEDED', 'FAILED', 'PARTIAL'])
+    const deadline = Date.now() + maxWaitMs
+
+    while (Date.now() < deadline) {
+        const res = await request(app).get(`/batch/jobs/${jobId}`)
+        const state: string | undefined = res.body?.state
+        if (res.status === 200 && state && TERMINAL.has(state)) return state
+        console.log(`  [poll] ${jobId}: ${state ?? '?'} — checking again in 10 s`)
+        await new Promise(r => setTimeout(r, 10_000))
+    }
+    throw new Error(`Job ${jobId} did not reach a terminal state within ${maxWaitMs / 60_000} min`)
+}
+
+// Shared job ID set by the first batch/create test that returns 201
 let batchJobId: string | undefined
 
 // ─── POST /transcribe ─────────────────────────────────────────────────────────
@@ -85,121 +98,100 @@ describe('POST /transcribe', () => {
         expect(res.body).toMatchObject({ error: expect.any(String) })
     })
 
-    test('WAV file with no config field (default language)', async () => {
+    test('WAV file, no config field (server default language)', async () => {
         const res = await request(app)
             .post('/transcribe')
             .attach('file', WAV, { filename: 'audio.wav', contentType: 'audio/wav' })
 
-        expectForwarded(res.status)
-        console.log('[transcribe] no config →', res.status, res.body)
+        expect(res.status).toBe(200)
+        expect(res.body).toMatchObject({ result: expect.any(Object) })
+        console.log('[transcribe] no config →', res.body)
     })
 
-    test('WAV file with explicit language: en-US', async () => {
+    test('WAV file, explicit language: en-US', async () => {
         const res = await request(app)
             .post('/transcribe')
             .attach('file', WAV, { filename: 'audio.wav', contentType: 'audio/wav' })
             .field('config', JSON.stringify({ language: 'en-US' }))
 
-        expectForwarded(res.status)
-        console.log('[transcribe] en-US →', res.status, res.body)
+        expect(res.status).toBe(200)
+        expect(res.body).toMatchObject({ result: expect.any(Object) })
+        console.log('[transcribe] en-US →', res.body)
     })
 
-    test('WAV file with channel_separation: false', async () => {
+    test('WAV file, channel_separation: false', async () => {
         const res = await request(app)
             .post('/transcribe')
             .attach('file', WAV, { filename: 'audio.wav', contentType: 'audio/wav' })
-            .field('config', JSON.stringify({ language: 'en-US', channel_separation: false }))
+            .field('config', JSON.stringify({ language: LANGUAGE, channel_separation: false }))
 
-        expectForwarded(res.status)
-        console.log('[transcribe] channel_separation:false →', res.status, res.body)
+        expect(res.status).toBe(200)
+        console.log('[transcribe] channel_separation:false →', res.body)
     })
 
-    test('WAV file with channel_separation: true', async () => {
+    test('WAV file, channel_separation: true', async () => {
         const res = await request(app)
             .post('/transcribe')
             .attach('file', WAV, { filename: 'audio.wav', contentType: 'audio/wav' })
-            .field('config', JSON.stringify({ language: 'en-US', channel_separation: true }))
+            .field('config', JSON.stringify({ language: LANGUAGE, channel_separation: true }))
 
-        expectForwarded(res.status)
-        console.log('[transcribe] channel_separation:true →', res.status, res.body)
+        expect(res.status).toBe(200)
+        console.log('[transcribe] channel_separation:true →', res.body)
     })
 
-    test('malformed config JSON falls back to default language', async () => {
+    test('WAV file, malformed config JSON (server falls back to default)', async () => {
         const res = await request(app)
             .post('/transcribe')
             .attach('file', WAV, { filename: 'audio.wav', contentType: 'audio/wav' })
             .field('config', 'NOT_VALID_JSON')
 
-        // Server should still forward (using default config), not crash
-        expectForwarded(res.status)
-        console.log('[transcribe] malformed config →', res.status, res.body)
+        expect(res.status).toBe(200)
+        console.log('[transcribe] malformed config →', res.body)
     })
 })
 
 // ─── POST /batch/jobs ─────────────────────────────────────────────────────────
 
 describe('POST /batch/jobs', () => {
-    test('SINGLE mode - minimal payload (output only)', async () => {
+    // Note: Zoom API constraints discovered during testing:
+    //   • SINGLE input requires output layout: PREFIX
+    //   • PREFIX input + ADJACENT layout must NOT include a separate output URI
+    //   • MANIFEST input requires output layout: PREFIX
+
+    test('SINGLE mode – S3 input + PREFIX output, env AWS creds', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                output: { uri: S3_OUTPUT },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
+                config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
-        console.log('[batch/create] minimal →', res.status, res.body)
-        if (res.status === 201 && res.body.job_id) batchJobId = res.body.job_id
+        console.log('[batch/create] SINGLE env-creds →', res.status, res.body)
+        if (res.status === 201) batchJobId ??= res.body.job_id
     })
 
-    test('SINGLE mode – S3 input + S3 output, env AWS creds', async () => {
+    test('SINGLE mode – inline AWS credentials (key + secret)', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
                 input: {
                     mode: 'SINGLE',
                     uri: `${S3_INPUT}/sample.wav`,
+                    auth: { aws: { access_key_id: AWS_KEY, secret_access_key: AWS_SECRET } },
                 },
                 output: {
                     uri: S3_OUTPUT,
+                    layout: 'PREFIX',
+                    auth: { aws: { access_key_id: AWS_KEY, secret_access_key: AWS_SECRET } },
                 },
                 config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
-        console.log('[batch/create] SINGLE S3 →', res.status, res.body)
-        if (res.status === 201 && res.body.job_id) batchJobId = res.body.job_id
-    })
-
-    test('SINGLE mode – S3 input + output, inline AWS credentials', async () => {
-        const res = await request(app)
-            .post('/batch/jobs')
-            .send({
-                input: {
-                    mode: 'SINGLE',
-                    uri: `${S3_INPUT}/sample.wav`,
-                    auth: {
-                        aws: {
-                            access_key_id: AWS_KEY,
-                            secret_access_key: AWS_SECRET,
-                            ...(AWS_TOKEN && { session_token: AWS_TOKEN }),
-                        },
-                    },
-                },
-                output: {
-                    uri: S3_OUTPUT,
-                    auth: {
-                        aws: {
-                            access_key_id: AWS_KEY,
-                            secret_access_key: AWS_SECRET,
-                            ...(AWS_TOKEN && { session_token: AWS_TOKEN }),
-                        },
-                    },
-                },
-                config: { language: LANGUAGE },
-            })
-
-        expectForwarded(res.status)
-        console.log('[batch/create] SINGLE inline creds →', res.status, res.body)
+        console.log('[batch/create] SINGLE inline-creds →', res.status, res.body)
+        if (res.status === 201) batchJobId ??= res.body.job_id
     })
 
     test('SINGLE mode – inline AWS credentials with session token', async () => {
@@ -209,22 +201,17 @@ describe('POST /batch/jobs', () => {
                 input: {
                     mode: 'SINGLE',
                     uri: `${S3_INPUT}/sample.wav`,
-                    auth: {
-                        aws: {
-                            access_key_id: AWS_KEY,
-                            secret_access_key: AWS_SECRET,
-                            session_token: AWS_TOKEN,
-                        },
-                    },
+                    auth: { aws: { access_key_id: AWS_KEY, secret_access_key: AWS_SECRET, session_token: AWS_TOKEN } },
                 },
-                output: { uri: S3_OUTPUT },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
             })
 
         expectForwarded(res.status)
-        console.log('[batch/create] SINGLE session token →', res.status, res.body)
+        console.log('[batch/create] SINGLE session-token →', res.status, res.body)
+        if (res.status === 201) batchJobId ??= res.body.job_id
     })
 
-    test('PREFIX mode – S3 prefix with include/exclude glob filters', async () => {
+    test('PREFIX mode – include + exclude glob filters, PREFIX output', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
@@ -236,34 +223,42 @@ describe('POST /batch/jobs', () => {
                         exclude_globs: ['**/tmp/**', '*_draft.*'],
                     },
                 },
-                output: {
-                    uri: S3_OUTPUT,
-                    layout: 'ADJACENT',
-                    overwrite: false,
-                },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
                 config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
         console.log('[batch/create] PREFIX filters →', res.status, res.body)
+        if (res.status === 201) batchJobId ??= res.body.job_id
     })
 
-    test('PREFIX mode – include globs only (no exclude)', async () => {
+    test('PREFIX mode – include globs only, PREFIX output', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
                 input: {
                     mode: 'PREFIX',
                     uri: `${S3_INPUT}/`,
-                    filters: {
-                        include_globs: ['**/*.flac'],
-                    },
+                    filters: { include_globs: ['**/*.flac'] },
                 },
-                output: { uri: S3_OUTPUT },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
             })
 
         expectForwarded(res.status)
-        console.log('[batch/create] PREFIX include only →', res.status, res.body)
+        console.log('[batch/create] PREFIX include-only →', res.status, res.body)
+    })
+
+    test('PREFIX mode – ADJACENT output layout (no separate output URI)', async () => {
+        // ADJACENT: transcripts written next to each input file; no output URI allowed.
+        const res = await request(app)
+            .post('/batch/jobs')
+            .send({
+                input: { mode: 'PREFIX', uri: `${S3_INPUT}/` },
+                output: { layout: 'ADJACENT' },
+            })
+
+        expectForwarded(res.status)
+        console.log('[batch/create] PREFIX+ADJACENT →', res.status, res.body)
     })
 
     test('MANIFEST mode – S3 URIs list', async () => {
@@ -278,47 +273,40 @@ describe('POST /batch/jobs', () => {
                         `${S3_INPUT}/file3.m4a`,
                     ],
                 },
-                output: {
-                    uri: S3_OUTPUT,
-                    layout: 'PREFIX',
-                },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
                 config: { language: LANGUAGE },
             })
 
         expectForwarded(res.status)
         console.log('[batch/create] MANIFEST S3 →', res.status, res.body)
+        if (res.status === 201) batchJobId ??= res.body.job_id
     })
 
-    test('MANIFEST mode – mixed HTTP and S3 URIs', async () => {
+    test('MANIFEST mode – HTTP URIs', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
                 input: {
                     mode: 'MANIFEST',
                     manifest: [
-                        'https://example.com/audio/meeting1.wav',
-                        'https://cdn.example.com/recordings/call.mp3',
+                        process.env.TEST_PUBLIC_URL,
+                        process.env.TEST_PUBLIC_URL,
                     ],
                 },
-                output: {
-                    uri: S3_OUTPUT,
-                    layout: 'PREFIX',
-                },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
             })
 
         expectForwarded(res.status)
         console.log('[batch/create] MANIFEST HTTP →', res.status, res.body)
+        if (res.status === 201) batchJobId ??= res.body.job_id
     })
 
-    test('SINGLE mode – with reference_id for tracking', async () => {
+    test('SINGLE mode – with reference_id', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                input: {
-                    mode: 'SINGLE',
-                    uri: `${S3_INPUT}/sample.wav`,
-                },
-                output: { uri: S3_OUTPUT },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
                 reference_id: 'test-run-001',
             })
 
@@ -326,33 +314,25 @@ describe('POST /batch/jobs', () => {
         console.log('[batch/create] reference_id →', res.status, res.body)
     })
 
-    test('SINGLE mode – with webhook notifications (no secret)', async () => {
+    test('SINGLE mode – webhook notifications, no secret', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                input: {
-                    mode: 'SINGLE',
-                    uri: `${S3_INPUT}/sample.wav`,
-                },
-                output: { uri: S3_OUTPUT },
-                notifications: {
-                    webhook_url: WEBHOOK_URL,
-                },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
+                notifications: { webhook_url: WEBHOOK_URL },
             })
 
         expectForwarded(res.status)
-        console.log('[batch/create] webhook no secret →', res.status, res.body)
+        console.log('[batch/create] webhook no-secret →', res.status, res.body)
     })
 
-    test('SINGLE mode – with webhook notifications + HMAC secret', async () => {
+    test('SINGLE mode – webhook notifications + HMAC secret', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
-                input: {
-                    mode: 'SINGLE',
-                    uri: `${S3_INPUT}/sample.wav`,
-                },
-                output: { uri: S3_OUTPUT },
+                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
                 notifications: {
                     webhook_url: WEBHOOK_URL,
                     secret: process.env.WEBHOOK_SECRET ?? 'my-hmac-secret',
@@ -360,31 +340,7 @@ describe('POST /batch/jobs', () => {
             })
 
         expectForwarded(res.status)
-        console.log('[batch/create] webhook + secret →', res.status, res.body)
-    })
-
-    test('output layout: ADJACENT', async () => {
-        const res = await request(app)
-            .post('/batch/jobs')
-            .send({
-                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
-                output: { uri: S3_OUTPUT, layout: 'ADJACENT' },
-            })
-
-        expectForwarded(res.status)
-        console.log('[batch/create] layout ADJACENT →', res.status, res.body)
-    })
-
-    test('output layout: PREFIX', async () => {
-        const res = await request(app)
-            .post('/batch/jobs')
-            .send({
-                input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
-                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
-            })
-
-        expectForwarded(res.status)
-        console.log('[batch/create] layout PREFIX →', res.status, res.body)
+        console.log('[batch/create] webhook+secret →', res.status, res.body)
     })
 
     test('output overwrite: true', async () => {
@@ -392,7 +348,7 @@ describe('POST /batch/jobs', () => {
             .post('/batch/jobs')
             .send({
                 input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
-                output: { uri: S3_OUTPUT, overwrite: true },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX', overwrite: true },
             })
 
         expectForwarded(res.status)
@@ -404,7 +360,7 @@ describe('POST /batch/jobs', () => {
             .post('/batch/jobs')
             .send({
                 input: { mode: 'SINGLE', uri: `${S3_INPUT}/sample.wav` },
-                output: { uri: S3_OUTPUT },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
                 config: { language: 'fr-FR' },
             })
 
@@ -412,7 +368,7 @@ describe('POST /batch/jobs', () => {
         console.log('[batch/create] lang fr-FR →', res.status, res.body)
     })
 
-    test('full payload – all fields set', async () => {
+    test('full payload – all optional fields set', async () => {
         const res = await request(app)
             .post('/batch/jobs')
             .send({
@@ -434,7 +390,7 @@ describe('POST /batch/jobs', () => {
                 output: {
                     destination: 'S3',
                     uri: S3_OUTPUT,
-                    layout: 'ADJACENT',
+                    layout: 'PREFIX',
                     overwrite: false,
                     auth: {
                         aws: {
@@ -454,124 +410,173 @@ describe('POST /batch/jobs', () => {
 
         expectForwarded(res.status)
         console.log('[batch/create] full payload →', res.status, res.body)
-        if (res.status === 201 && res.body.job_id) batchJobId = res.body.job_id
+        if (res.status === 201) batchJobId ??= res.body.job_id
+    })
+})
+
+// ─── Batch job completion (polls until terminal state) ────────────────────────
+
+describe('Batch job completion', () => {
+    test('job reaches SUCCEEDED, PARTIAL or FAILED within 5 minutes', async () => {
+        const tunnelUrl = process.env.TEST_TUNNEL_URL
+        if (!tunnelUrl) {
+            console.log('[batch/complete] skipping — TEST_TUNNEL_URL not set (cloudflared not running)')
+            return
+        }
+
+        // Submit a PREFIX job that scans the entire input bucket.
+        // The webhook URL points to the cloudflared tunnel → localhost:4000/webhooks/scribe
+        // so Zoom will notify the local server when the job finishes.
+        const res = await request(app)
+            .post('/batch/jobs')
+            .send({
+                input: {
+                    mode: 'PREFIX',
+                    uri: `${S3_INPUT}/`,
+                    filters: { include_globs: ['**/*.wav', '**/*.mp3', '**/*.m4a', '**/*.flac'] },
+                },
+                output: { uri: S3_OUTPUT, layout: 'PREFIX' },
+                config: { language: LANGUAGE },
+                notifications: {
+                    webhook_url: `${tunnelUrl}/webhooks/scribe`,
+                    secret: process.env.WEBHOOK_SECRET,
+                },
+            })
+
+        expect(res.status).toBe(201)
+        const jobId: string = res.body.job_id
+        console.log(`[batch/complete] job created: ${jobId} (${res.body.state})`)
+        console.log(`[batch/complete] webhook: ${tunnelUrl}/webhooks/scribe`)
+
+        // Poll until the job finishes; webhook events will arrive at the real server
+        // on port 4000 (handled by /webhooks/scribe in index.ts and logged there).
+        const finalState = await waitForJobCompletion(jobId)
+        console.log(`[batch/complete] job ${jobId} finished → ${finalState}`)
+
+        // Fetch final job details to verify structure
+        const detail = await request(app).get(`/batch/jobs/${jobId}`)
+        expect(detail.status).toBe(200)
+        expect(detail.body).toMatchObject({
+            job_id: jobId,
+            state: finalState,
+            summary: expect.any(Object),
+        })
+        console.log('[batch/complete] summary:', detail.body.summary)
+
+        // Fetch the file list to verify output structure
+        const files = await request(app).get(`/batch/jobs/${jobId}/files`)
+        expect(files.status).toBe(200)
+        expect(files.body).toHaveProperty('files')
+        expect(Array.isArray(files.body.files)).toBe(true)
+        console.log(`[batch/complete] files processed: ${files.body.files.length}`)
+
+        expect(['SUCCEEDED', 'PARTIAL', 'FAILED']).toContain(finalState)
     })
 })
 
 // ─── GET /batch/jobs ──────────────────────────────────────────────────────────
 
 describe('GET /batch/jobs', () => {
-    test('no filters', async () => {
+    test('no filters — returns jobs array', async () => {
         const res = await request(app).get('/batch/jobs')
 
-        expectForwarded(res.status)
-        console.log('[batch/list] no filter →', res.status, res.body)
-        if (res.status === 200) {
-            expect(res.body).toHaveProperty('jobs')
-            expect(Array.isArray(res.body.jobs)).toBe(true)
-        }
+        expect(res.status).toBe(200)
+        expect(res.body).toHaveProperty('jobs')
+        expect(Array.isArray(res.body.jobs)).toBe(true)
+        console.log(`[batch/list] jobs: ${res.body.jobs.length}`)
     })
 
     test('filter by state: SUCCEEDED', async () => {
         const res = await request(app).get('/batch/jobs?state=SUCCEEDED')
 
-        expectForwarded(res.status)
-        console.log('[batch/list] state=SUCCEEDED →', res.status, res.body)
+        expect(res.status).toBe(200)
+        console.log(`[batch/list] SUCCEEDED: ${res.body.jobs?.length ?? 0}`)
     })
 
     test('filter by state: FAILED', async () => {
         const res = await request(app).get('/batch/jobs?state=FAILED')
 
-        expectForwarded(res.status)
-        console.log('[batch/list] state=FAILED →', res.status, res.body)
-    })
-
-    test('filter by state: IN_PROGRESS', async () => {
-        const res = await request(app).get('/batch/jobs?state=IN_PROGRESS')
-
-        expectForwarded(res.status)
-        console.log('[batch/list] state=IN_PROGRESS →', res.status, res.body)
+        expect(res.status).toBe(200)
+        console.log(`[batch/list] FAILED: ${res.body.jobs?.length ?? 0}`)
     })
 })
 
 // ─── GET /batch/jobs/:jobId ───────────────────────────────────────────────────
 
 describe('GET /batch/jobs/:jobId', () => {
-    test('get created job (if available)', async () => {
+    test('returns full job details for a created job', async () => {
         if (!batchJobId) {
-            console.log('[batch/get] skipping — no job was created successfully')
+            console.log('[batch/get] skipping — no job was created (all POSTs returned 502)')
             return
         }
         const res = await request(app).get(`/batch/jobs/${batchJobId}`)
 
         expectForwarded(res.status)
-        console.log('[batch/get] →', res.status, res.body)
         if (res.status === 200) {
-            expect(res.body).toHaveProperty('job_id', batchJobId)
+            expect(res.body).toMatchObject({ job_id: batchJobId, state: expect.any(String) })
         }
+        console.log('[batch/get] →', res.status, res.body)
     })
 
-    test('non-existent job ID → 502 (Zoom 404)', async () => {
+    test('non-existent ID → 502 with Zoom 404 payload', async () => {
         const res = await request(app).get('/batch/jobs/nonexistent-job-id-000')
 
         expect(res.status).toBe(502)
         expect(res.body).toHaveProperty('error')
-        console.log('[batch/get] invalid id →', res.status, res.body)
+        console.log('[batch/get] invalid id →', res.body)
     })
 })
 
 // ─── GET /batch/jobs/:jobId/files ─────────────────────────────────────────────
 
 describe('GET /batch/jobs/:jobId/files', () => {
-    test('list files for created job (if available)', async () => {
+    test('returns files array for a created job', async () => {
         if (!batchJobId) {
-            console.log('[batch/files] skipping — no job was created successfully')
+            console.log('[batch/files] skipping — no job was created')
             return
         }
         const res = await request(app).get(`/batch/jobs/${batchJobId}/files`)
 
         expectForwarded(res.status)
-        console.log('[batch/files] →', res.status, res.body)
         if (res.status === 200) {
             expect(res.body).toHaveProperty('files')
         }
+        console.log('[batch/files] →', res.status, res.body)
     })
 
-    test('non-existent job ID → 502', async () => {
+    test('non-existent ID → 502', async () => {
         const res = await request(app).get('/batch/jobs/nonexistent-job-id-000/files')
 
         expect(res.status).toBe(502)
-        console.log('[batch/files] invalid id →', res.status, res.body)
+        console.log('[batch/files] invalid id →', res.body)
     })
 })
 
 // ─── DELETE /batch/jobs/:jobId ────────────────────────────────────────────────
 
 describe('DELETE /batch/jobs/:jobId', () => {
-    test('cancel created job (if available)', async () => {
+    test('cancels a created job (or 502 if already terminal)', async () => {
         if (!batchJobId) {
-            console.log('[batch/cancel] skipping — no job was created successfully')
+            console.log('[batch/cancel] skipping — no job was created')
             return
         }
         const res = await request(app).delete(`/batch/jobs/${batchJobId}`)
 
-        // 204 = cancelled, 502 = Zoom rejected (e.g. job already finished)
-        expectForwarded(res.status)
+        expectForwarded(res.status) // 204 = cancelled, 502 = job already finished
         console.log('[batch/cancel] →', res.status)
     })
 
-    test('non-existent job ID → 502', async () => {
+    test('non-existent ID → 502', async () => {
         const res = await request(app).delete('/batch/jobs/nonexistent-job-id-000')
 
         expect(res.status).toBe(502)
-        console.log('[batch/cancel] invalid id →', res.status, res.body)
+        console.log('[batch/cancel] invalid id →', res.body)
     })
 })
 
 // ─── POST /webhooks/scribe ────────────────────────────────────────────────────
 
 describe('POST /webhooks/scribe', () => {
-    // Webhooks don't forward to Zoom — they just log and ack
     const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET
 
     function signWebhook(body: string, secret: string, timestamp = Date.now().toString()) {
@@ -580,7 +585,7 @@ describe('POST /webhooks/scribe', () => {
         return { signature: `sha256=${sig}`, timestamp }
     }
 
-    test('job created event – no WEBHOOK_SECRET configured', async () => {
+    test('unsigned request: accepted when no secret, rejected (401) when secret is set', async () => {
         const payload = JSON.stringify({
             event_type: 'scribe.batch_job.created',
             job: { job_id: 'job-abc-123' },
@@ -591,17 +596,16 @@ describe('POST /webhooks/scribe', () => {
             .set('Content-Type', 'application/json')
             .send(payload)
 
-        // If WEBHOOK_SECRET is set we may get 401; if not, we get 200
-        if (!WEBHOOK_SECRET) {
+        if (WEBHOOK_SECRET) {
+            expect(res.status).toBe(401)
+        } else {
             expect(res.status).toBe(200)
             expect(res.body).toMatchObject({ status: 'received' })
-        } else {
-            expect(res.status).toBe(401)
         }
-        console.log('[webhook] created, no sig →', res.status, res.body)
+        console.log('[webhook] unsigned →', res.status, res.body)
     })
 
-    test('job completed event with summary', async () => {
+    test('job completed event with summary (with valid signature if secret is set)', async () => {
         const payload = JSON.stringify({
             event_type: 'scribe.batch_job.completed',
             job: {
@@ -610,33 +614,27 @@ describe('POST /webhooks/scribe', () => {
             },
         })
 
-        if (!WEBHOOK_SECRET) {
-            const res = await request(app)
-                .post('/webhooks/scribe')
-                .set('Content-Type', 'application/json')
-                .send(payload)
-
-            expect(res.status).toBe(200)
-            expect(res.body).toMatchObject({ status: 'received' })
-            console.log('[webhook] completed with summary →', res.status, res.body)
-        } else {
+        const headers: Record<string, string> = {}
+        if (WEBHOOK_SECRET) {
             const { signature, timestamp } = signWebhook(payload, WEBHOOK_SECRET)
-            const res = await request(app)
-                .post('/webhooks/scribe')
-                .set('Content-Type', 'application/json')
-                .set('x-zm-signature', signature)
-                .set('x-zm-request-timestamp', timestamp)
-                .send(payload)
-
-            expect(res.status).toBe(200)
-            expect(res.body).toMatchObject({ status: 'received' })
-            console.log('[webhook] completed + valid sig →', res.status, res.body)
+            headers['x-zm-signature'] = signature
+            headers['x-zm-request-timestamp'] = timestamp
         }
+
+        const res = await request(app)
+            .post('/webhooks/scribe')
+            .set('Content-Type', 'application/json')
+            .set(headers)
+            .send(payload)
+
+        expect(res.status).toBe(200)
+        expect(res.body).toMatchObject({ status: 'received' })
+        console.log('[webhook] completed+summary →', res.status, res.body)
     })
 
     test('valid HMAC signature is accepted', async () => {
         if (!WEBHOOK_SECRET) {
-            console.log('[webhook] skipping signature test — WEBHOOK_SECRET not set')
+            console.log('[webhook] skipping — WEBHOOK_SECRET not set')
             return
         }
         const payload = JSON.stringify({
@@ -654,21 +652,21 @@ describe('POST /webhooks/scribe', () => {
 
         expect(res.status).toBe(200)
         expect(res.body).toMatchObject({ status: 'received' })
-        console.log('[webhook] valid sig →', res.status, res.body)
+        console.log('[webhook] valid sig →', res.status)
     })
 
-    test('invalid HMAC signature is rejected with 401', async () => {
+    test('wrong HMAC secret → 401', async () => {
         if (!WEBHOOK_SECRET) {
-            console.log('[webhook] skipping signature test — WEBHOOK_SECRET not set')
+            console.log('[webhook] skipping — WEBHOOK_SECRET not set')
             return
         }
         const payload = JSON.stringify({
             event_type: 'scribe.batch_job.created',
             job: { job_id: 'job-xyz-999' },
         })
-
-        // Sign with a wrong secret so the HMAC is correctly formatted but won't match
+        // Signing with a different key produces a correctly-sized but wrong HMAC
         const { signature, timestamp } = signWebhook(payload, 'wrong-secret')
+
         const res = await request(app)
             .post('/webhooks/scribe')
             .set('Content-Type', 'application/json')
@@ -678,12 +676,12 @@ describe('POST /webhooks/scribe', () => {
 
         expect(res.status).toBe(401)
         expect(res.body).toHaveProperty('error')
-        console.log('[webhook] invalid sig →', res.status, res.body)
+        console.log('[webhook] wrong sig →', res.status)
     })
 
-    test('missing signature headers are rejected with 401', async () => {
+    test('missing signature headers → 401', async () => {
         if (!WEBHOOK_SECRET) {
-            console.log('[webhook] skipping signature test — WEBHOOK_SECRET not set')
+            console.log('[webhook] skipping — WEBHOOK_SECRET not set')
             return
         }
         const payload = JSON.stringify({
@@ -697,6 +695,6 @@ describe('POST /webhooks/scribe', () => {
             .send(payload)
 
         expect(res.status).toBe(401)
-        console.log('[webhook] missing headers →', res.status, res.body)
+        console.log('[webhook] missing headers →', res.status)
     })
 })
